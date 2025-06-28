@@ -1,5 +1,5 @@
 import torch
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import pipeline
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler, ShapEPipeline, DiffusionPipeline
 from diffusers.utils import export_to_gif, export_to_video
 
@@ -10,7 +10,7 @@ def generate_image(prompt):
     pipe = StableDiffusionPipeline.from_pretrained(model_id, scheduler=scheduler, torch_dtype=torch.float16).to("mps")
 
     image = pipe(prompt).images[0]
-    image.save("astronaut_rides_horse.png")
+    image.save("image.png")
 
 # === Text-to-Video (Wan-AI) ===
 def generate_video(prompt):
@@ -32,24 +32,33 @@ def generate_video(prompt):
 def generate_3D(prompt):
     repo = "openai/shap-e"
     pipe = ShapEPipeline.from_pretrained(repo).to("mps")
-    shape_prompt = "a shark"
     images = pipe(
-        shape_prompt,
+        prompt,
         guidance_scale=15.0,
         num_inference_steps=64,
         size=256
     ).images
 
-    gif_path = export_to_gif(images, "shark_3d.gif")
+    gif_path = export_to_gif(images, "3d.gif")
 
 # === Prompt Enhancer (Text-to-Text) ===
 def enhance_prompt(prompt):
-    tokenizer = AutoTokenizer.from_pretrained("google-t5/t5-base")
-    model = AutoModelForSeq2SeqLM.from_pretrained("google-t5/t5-base", torch_dtype=torch.float16, device_map="auto")
+    prompt_enhancer = pipeline("text2text-generation", model="google/flan-t5-large")
 
-    inputs = tokenizer(prompt, return_tensors="pt")
-    inputs = {k: v.to("mps") for k, v in inputs.items()}
-    output = model.generate(**inputs)
-    enhanced_prompt = tokenizer.decode(output[0], skip_special_tokens=True)
-    print("Enhanced Prompt:", enhanced_prompt)
-    return enhanced_prompt
+    instruction = "Rewrite this prompt for stable diffusion, make it vivid and detailed"
+    input_text = f"{instruction}: {prompt}"
+
+    enhanced = prompt_enhancer(input_text, max_length=100)[0]['generated_text']
+    print("Enhanced Prompt:", enhanced)
+    return enhanced
+
+def main():
+    prompt = input("Enter prompt: ")
+    enhanced = enhance_prompt(prompt)
+    generate_image(enhanced)
+    generate_video(enhanced)
+    generate_3D(enhanced)
+
+
+if __name__ == "__main__":
+    main()
