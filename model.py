@@ -45,7 +45,7 @@ def generate_3D(prompt):
 def enhance_prompt(prompt):
     prompt_enhancer = pipeline("text2text-generation", model="google/flan-t5-large")
 
-    instruction = "Rewrite this prompt for stable diffusion, make it vivid and detailed"
+    instruction = "Make this prompt more vivid, detailed, and suitable for high-quality visual output."
     input_text = f"{instruction}: {prompt}"
 
     enhanced = prompt_enhancer(input_text, max_length=100)[0]['generated_text']
