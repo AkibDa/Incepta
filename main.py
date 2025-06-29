@@ -51,7 +51,7 @@ def enhance_prompt(prompt, mode="Standard"):
 
     # Display the enhanced prompt in a styled box
     st.markdown(
-      f'<div style="background-color:#f0f8ff; padding:15px; border-radius:5px; margin-top:10px; border:1px solid #ddd">'
+      f'<div style="padding:15px; border-radius:5px; margin-top:10px; border:1px solid #ddd">'
       f'<strong>✨ Enhanced Prompt:</strong><br>{enhanced}'
       f'</div>',
       unsafe_allow_html=True
@@ -307,7 +307,7 @@ def main():
           with open(st.session_state.generated_outputs["3d_model"], "rb") as f:
             st.download_button(
               "Download 3D Preview",
-              data=f,
+              data=f.read(),
               file_name="3d_preview.gif",
               mime="image/gif"
             )
@@ -316,7 +316,7 @@ def main():
   st.markdown("---")
   footer = """
     <div class="footer">
-        <p>Incepta [From Imagination to Reality — One Prompt at a Time] v1.0 | <a href="https://github.com/AkibDa" target="_blank">GitHub</a> | Made with ❤️ using Diffusers</p>
+        <p style="color:white">Incepta [From Imagination to Reality — One Prompt at a Time] v1.0 | <a href="https://github.com/AkibDa" target="_blank">GitHub</a> | Made with ❤️ using Diffusers</p>
     </div>
     """
   html(footer, height=50)
