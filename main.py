@@ -1,8 +1,6 @@
-import os
 import torch
 import gc
 import tempfile
-from PIL import Image
 import streamlit as st
 from transformers import pipeline
 from diffusers import (
@@ -13,8 +11,6 @@ from diffusers import (
 )
 from diffusers.utils import export_to_gif, export_to_video
 from streamlit.components.v1 import html
-import time
-
 
 # === Device Helpers ===
 def get_cpu():
