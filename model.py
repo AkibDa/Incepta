@@ -3,6 +3,7 @@ import torch
 import gc
 import tempfile
 from PIL import Image
+import requests
 from transformers import pipeline
 from diffusers import (
   StableDiffusionPipeline,
@@ -28,19 +29,35 @@ def clear_memory():
     torch.mps.empty_cache()
 
 
+HF_TOKEN = st.secrets["api"]["hf_token"]
+
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+headers = {
+    "Authorization": f"Bearer {HF_TOKEN}"
+}
+
 # === Prompt Enhancer (Text-to-Text) ===
 def enhance_prompt(prompt):
-  print("\n⏳ Enhancing prompt...")
-  prompt_enhancer = pipeline(
-    "text2text-generation",
-    model="google/flan-t5-base",
-    device=0 if torch.cuda.is_available() else -1  # CPU
-  )
+  st.write("⏳ Enhancing prompt via Hugging Face Inference API...")
+
   instruction = "Make this prompt more vivid, detailed, and suitable for high-quality visual output."
   input_text = f"{instruction}: {prompt}"
-  enhanced = prompt_enhancer(input_text, max_length=100)[0]['generated_text']
-  print("✨ Enhanced Prompt:", enhanced)
-  return enhanced
+
+  payload = {"inputs": input_text, "parameters": {"max_length": 100}}
+
+  response = requests.post(API_URL, headers=headers, json=payload)
+
+  if response.status_code == 200:
+    try:
+      enhanced = response.json()[0]["generated_text"]
+      st.success("✨ Enhanced Prompt Generated")
+      return enhanced
+    except Exception as e:
+      st.error("Failed to parse response.")
+      return ""
+  else:
+    st.error(f"API Error: {response.status_code}")
+    return ""
 
 
 # === Text-to-Image (Stable Diffusion) ===

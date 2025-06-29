@@ -3,6 +3,7 @@ import torch
 import gc
 import tempfile
 import streamlit as st
+import requests
 from transformers import pipeline
 from diffusers import (
   StableDiffusionPipeline,
@@ -72,31 +73,54 @@ def load_prompt_enhancer():
     device=get_device_info()["cuda"]
   )
 
+HF_TOKEN = st.secrets["HF_TOKEN"]
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+HEADERS = {
+    "Authorization": f"Bearer {HF_TOKEN}"
+}
 
 def enhance_prompt(prompt, mode="Standard", creativity=0.7):
-  with st.spinner("🧠 Enhancing your prompt..."):
-    instructions = {
-      "Standard": "Improve this prompt for general creative generation:",
-      "Photorealistic": "Make this photorealistic with detailed descriptions:",
-      "Artistic": "Enhance for artistic style with creative elements:",
-      "Cinematic": "Optimize for cinematic visuals with dramatic elements:",
-      "Detailed": "Add rich, specific details to this prompt:",
-      "3D Render": "Prepare for 3D modeling with technical details:"
-    }
+    with st.spinner("🧠 Enhancing your prompt..."):
+        instructions = {
+            "Standard": "Improve this prompt for general creative generation:",
+            "Photorealistic": "Make this photorealistic with detailed descriptions:",
+            "Artistic": "Enhance for artistic style with creative elements:",
+            "Cinematic": "Optimize for cinematic visuals with dramatic elements:",
+            "Detailed": "Add rich, specific details to this prompt:",
+            "3D Render": "Prepare for 3D modeling with technical details:"
+        }
 
-    enhancer = load_prompt_enhancer()
-    input_text = f"{instructions.get(mode, 'Improve:')} {prompt}"
+        instruction = instructions.get(mode, "Improve:")
+        input_text = f"{instruction} {prompt}"
 
-    # Adjust max_length based on creativity
-    max_len = min(50 + int(creativity * 100), 150)
-    enhanced = enhancer(input_text, max_length=max_len)[0]['generated_text']
+        max_len = min(50 + int(creativity * 100), 150)
 
-    with st.expander("🔍 Prompt Enhancement Details", expanded=False):
-      st.markdown(f"**Original:** `{prompt}`")
-      st.markdown(f"**Enhanced:** `{enhanced}`")
-      st.caption(f"Mode: {mode} | Creativity: {creativity:.1f}")
+        payload = {
+            "inputs": input_text,
+            "parameters": {
+                "max_length": max_len
+            }
+        }
 
-    return enhanced
+        response = requests.post(API_URL, headers=HEADERS, json=payload)
+
+        if response.status_code == 200:
+            try:
+                enhanced = response.json()[0]["generated_text"]
+            except Exception:
+                st.error("Error parsing response.")
+                return prompt
+        else:
+            st.error(f"API error: {response.status_code}")
+            return prompt
+
+        with st.expander("🔍 Prompt Enhancement Details", expanded=False):
+            st.markdown(f"**Original:** `{prompt}`")
+            st.markdown(f"**Enhanced:** `{enhanced}`")
+            st.caption(f"Mode: {mode} | Creativity: {creativity:.1f}")
+
+        return enhanced
+
 
 
 @st.cache_resource(show_spinner=False)
