@@ -248,38 +248,53 @@ def main():
     # Display outputs in tabs
     tab1, tab2, tab3 = st.tabs(["Image", "Video", "3D Model"])
 
-    if "Image" in output_types:
-      with tab1:
-        try:
-          image = generate_image(prompt_to_use, negative_prompt)
-          st.image(image, caption="Generated Image", use_column_width=True)
-          st.session_state.generated_outputs["image"] = image
-        except Exception as e:
-          st.error(f"Failed to generate image: {str(e)}")
-
-    if "Video" in output_types:
-      with tab2:
-        try:
-          video_path = generate_video(prompt_to_use, negative_prompt)
-          st.video(video_path)
-          st.session_state.generated_outputs["video"] = video_path
-        except Exception as e:
-          st.error(f"Failed to generate video: {str(e)}")
-
-    if "3D Model" in output_types:
-      with tab3:
-        try:
-          gif_path = generate_3D(prompt_to_use)
-          st.image(gif_path, caption="3D Model Preview", use_column_width=True)
-          st.session_state.generated_outputs["3d_model"] = gif_path
-        except Exception as e:
-          st.error(f"Failed to generate 3D model: {str(e)}")
-
-    # Download buttons
     if st.session_state.generated_outputs:
       st.markdown("---")
       st.subheader("Download Options")
       cols = st.columns(3)
+
+      # Image download
+      if "image" in st.session_state.generated_outputs:
+        with cols[0]:
+          try:
+            buf = BytesIO()
+            st.session_state.generated_outputs["image"].save(buf, format="PNG")
+            st.download_button(
+              "📥 Download Image",
+              data=buf.getvalue(),
+              file_name="generated_image.png",
+              mime="image/png"
+            )
+          except Exception as e:
+            st.error(f"Image download failed: {str(e)}")
+
+      # Video download
+      if "video" in st.session_state.generated_outputs:
+        with cols[1]:
+          try:
+            with open(st.session_state.generated_outputs["video"], "rb") as f:
+              st.download_button(
+                "📥 Download Video",
+                data=f.read(),
+                file_name="generated_video.mp4",
+                mime="video/mp4"
+              )
+          except Exception as e:
+            st.error(f"Video download failed: {str(e)}")
+
+      # 3D Model download
+      if "3d_model" in st.session_state.generated_outputs:
+        with cols[2]:
+          try:
+            with open(st.session_state.generated_outputs["3d_model"], "rb") as f:
+              st.download_button(
+                "📥 Download 3D Preview",
+                data=f.read(),
+                file_name="3d_preview.gif",
+                mime="image/gif"
+              )
+          except Exception as e:
+            st.error(f"3D model download failed: {str(e)}")
 
       if "image" in st.session_state.generated_outputs:
         with cols[0]:
@@ -297,7 +312,7 @@ def main():
           with open(st.session_state.generated_outputs["video"], "rb") as f:
             st.download_button(
               "Download Video",
-              data=f,
+              data=f.read(),  # FIXED: Read binary content
               file_name="generated_video.mp4",
               mime="video/mp4"
             )
