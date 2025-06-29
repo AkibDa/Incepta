@@ -18,6 +18,10 @@ def generate_image(prompt):
 
 # === Text-to-Video (Wan-AI) ===
 def generate_video(prompt):
+    import gc
+    gc.collect()
+    torch.mps.empty_cache()
+
     model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
     pipe = DiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32).to("mps")
 
@@ -30,11 +34,12 @@ def generate_video(prompt):
         num_frames=45,
         guidance_scale=5.0
     ).frames[0]
+
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
         temp_path = tmp.name
 
     export_to_video(output, temp_path, fps=15)
-    os.system(f'open "{temp_path}"')  # Use 'start' for Windows or 'xdg-open' for Linux
+    os.system(f'open "{temp_path}"')
     torch.mps.empty_cache()
 
 # === Text-to-3D (Shape-E) ===
