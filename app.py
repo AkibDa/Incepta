@@ -73,54 +73,59 @@ def load_prompt_enhancer():
     device=get_device_info()["cuda"]
   )
 
-HF_TOKEN = st.secrets["HF_TOKEN"]
-API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
-HEADERS = {
-    "Authorization": f"Bearer {HF_TOKEN}"
-}
-
 def enhance_prompt(prompt, mode="Standard", creativity=0.7):
-    with st.spinner("🧠 Enhancing your prompt..."):
-        instructions = {
-            "Standard": "Improve this prompt for general creative generation:",
-            "Photorealistic": "Make this photorealistic with detailed descriptions:",
-            "Artistic": "Enhance for artistic style with creative elements:",
-            "Cinematic": "Optimize for cinematic visuals with dramatic elements:",
-            "Detailed": "Add rich, specific details to this prompt:",
-            "3D Render": "Prepare for 3D modeling with technical details:"
-        }
+  with st.spinner("🧠 Enhancing your prompt..."):
+    # Safely load secret inside function
+    HF_TOKEN = st.secrets.get("HF_TOKEN", "")
+    if not HF_TOKEN:
+      st.error("❌ Hugging Face token not found. Please set `HF_TOKEN` in Space secrets.")
+      return prompt
 
-        instruction = instructions.get(mode, "Improve:")
-        input_text = f"{instruction} {prompt}"
+    API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+    HEADERS = {
+      "Authorization": f"Bearer {HF_TOKEN}"
+    }
 
-        max_len = min(50 + int(creativity * 100), 150)
+    # Prompt instructions
+    instructions = {
+      "Standard": "Improve this prompt for general creative generation:",
+      "Photorealistic": "Make this photorealistic with detailed descriptions:",
+      "Artistic": "Enhance for artistic style with creative elements:",
+      "Cinematic": "Optimize for cinematic visuals with dramatic elements:",
+      "Detailed": "Add rich, specific details to this prompt:",
+      "3D Render": "Prepare for 3D modeling with technical details:"
+    }
 
-        payload = {
-            "inputs": input_text,
-            "parameters": {
-                "max_length": max_len
-            }
-        }
+    instruction = instructions.get(mode, "Improve:")
+    input_text = f"{instruction} {prompt}"
 
-        response = requests.post(API_URL, headers=HEADERS, json=payload)
+    max_len = min(50 + int(creativity * 100), 150)
 
-        if response.status_code == 200:
-            try:
-                enhanced = response.json()[0]["generated_text"]
-            except Exception:
-                st.error("Error parsing response.")
-                return prompt
-        else:
-            st.error(f"API error: {response.status_code}")
-            return prompt
+    payload = {
+      "inputs": input_text,
+      "parameters": {
+        "max_length": max_len
+      }
+    }
 
-        with st.expander("🔍 Prompt Enhancement Details", expanded=False):
-            st.markdown(f"**Original:** `{prompt}`")
-            st.markdown(f"**Enhanced:** `{enhanced}`")
-            st.caption(f"Mode: {mode} | Creativity: {creativity:.1f}")
+    response = requests.post(API_URL, headers=HEADERS, json=payload)
 
-        return enhanced
+    if response.status_code == 200:
+      try:
+        enhanced = response.json()[0]["generated_text"]
+      except Exception:
+        st.error("⚠️ Error parsing response.")
+        return prompt
+    else:
+      st.error(f"❌ API error: {response.status_code}")
+      return prompt
 
+    with st.expander("🔍 Prompt Enhancement Details", expanded=False):
+      st.markdown(f"**Original:** `{prompt}`")
+      st.markdown(f"**Enhanced:** `{enhanced}`")
+      st.caption(f"Mode: {mode} | Creativity: {creativity:.1f}")
+
+    return enhanced
 
 
 @st.cache_resource(show_spinner=False)

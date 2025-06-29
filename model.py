@@ -28,16 +28,14 @@ def clear_memory():
   if torch.backends.mps.is_available():
     torch.mps.empty_cache()
 
-
-HF_TOKEN = st.secrets["api"]["hf_token"]
-
-API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}"
-}
-
 # === Prompt Enhancer (Text-to-Text) ===
 def enhance_prompt(prompt):
+  HF_TOKEN = st.secrets["api"]["HF_TOKEN"]
+
+  API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+  headers = {
+    "Authorization": f"Bearer {HF_TOKEN}"
+  }
   st.write("⏳ Enhancing prompt via Hugging Face Inference API...")
 
   instruction = "Make this prompt more vivid, detailed, and suitable for high-quality visual output."
