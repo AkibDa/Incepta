@@ -130,17 +130,26 @@ def enhance_prompt(prompt, mode="Standard", creativity=0.7):
 
 @st.cache_resource(show_spinner=False)
 def load_image_pipeline():
-  """Cache the image generation pipeline"""
-  device = get_device_info()["mps"]
-  pipe = StableDiffusionPipeline.from_pretrained(
-    MODEL_INFO["image_generator"],
-    scheduler=EulerDiscreteScheduler.from_pretrained(
-      MODEL_INFO["image_generator"],
-      subfolder="scheduler"
-    ),
-    torch_dtype=torch.float16 if device == "mps" else torch.float32
-  ).to(device)
-  return pipe
+    """Cache the image generation pipeline"""
+    device = get_device_info()["mps"]
+
+    HF_TOKEN = st.secrets["HF_TOKEN"]  # 🔐 securely load your token
+
+    scheduler = EulerDiscreteScheduler.from_pretrained(
+        MODEL_INFO["image_generator"],
+        subfolder="scheduler",
+        use_auth_token=HF_TOKEN  # ✅ required for private/gated models
+    )
+
+    pipe = StableDiffusionPipeline.from_pretrained(
+        MODEL_INFO["image_generator"],
+        scheduler=scheduler,
+        torch_dtype=torch.float16 if device == "mps" else torch.float32,
+        use_auth_token=HF_TOKEN  # ✅ add this
+    ).to(device)
+
+    return pipe
+
 
 
 def generate_image(prompt, negative_prompt="", steps=20, guidance=7.5, seed=None):
@@ -169,11 +178,14 @@ def generate_image(prompt, negative_prompt="", steps=20, guidance=7.5, seed=None
 
 @st.cache_resource(show_spinner=False)
 def load_video_pipeline():
-  """Cache the video generation pipeline"""
-  return DiffusionPipeline.from_pretrained(
-    MODEL_INFO["video_generator"],
-    torch_dtype=torch.float32
-  ).to(get_device_info()["cpu"])
+    """Cache the video generation pipeline"""
+    HF_TOKEN = st.secrets["HF_TOKEN"]  # or os.environ.get("HF_TOKEN")
+    return DiffusionPipeline.from_pretrained(
+        MODEL_INFO["video_generator"],
+        torch_dtype=torch.float32,
+        use_auth_token=HF_TOKEN  # ✅ Add this line
+    ).to(get_device_info()["cpu"])
+
 
 
 def generate_video(prompt, negative_prompt="", height=352, width=640, num_frames=33, guidance=5.0):
@@ -204,10 +216,14 @@ def generate_video(prompt, negative_prompt="", height=352, width=640, num_frames
 
 @st.cache_resource(show_spinner=False)
 def load_3d_pipeline():
-  """Cache the 3D generation pipeline"""
-  device = get_device_info()["mps"]
-  pipe = ShapEPipeline.from_pretrained(MODEL_INFO["3d_generator"]).to(device)
-  return pipe
+    """Cache the 3D generation pipeline"""
+    device = get_device_info()["mps"]
+    HF_TOKEN = st.secrets["HF_TOKEN"]  # or os.environ.get("HF_TOKEN")
+    return ShapEPipeline.from_pretrained(
+        MODEL_INFO["3d_generator"],
+        use_auth_token=HF_TOKEN  # ✅ Add this line
+    ).to(device)
+
 
 
 def generate_3d(prompt, guidance=15.0, steps=64, size=256):
