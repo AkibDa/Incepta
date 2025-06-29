@@ -11,6 +11,8 @@ from diffusers import (
 )
 from diffusers.utils import export_to_gif, export_to_video
 from streamlit.components.v1 import html
+from io import BytesIO
+
 
 # === Device Helpers ===
 def get_cpu():
@@ -46,6 +48,15 @@ def enhance_prompt(prompt, mode="Standard"):
     )
     input_text = f"{instruction} {prompt}"
     enhanced = prompt_enhancer(input_text, max_length=100)[0]['generated_text']
+
+    # Display the enhanced prompt in a styled box
+    st.markdown(
+      f'<div style="background-color:#f0f8ff; padding:15px; border-radius:5px; margin-top:10px; border:1px solid #ddd">'
+      f'<strong>✨ Enhanced Prompt:</strong><br>{enhanced}'
+      f'</div>',
+      unsafe_allow_html=True
+    )
+
     return enhanced
 
 
@@ -110,7 +121,6 @@ def generate_3D(prompt):
       prompt=prompt,
       guidance_scale=15.0,
       num_inference_steps=64,
-      size=256
     ).images
 
     with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
@@ -122,7 +132,7 @@ def generate_3D(prompt):
 
 
 # === Streamlit UI ===
-def setup_ui():
+def main():
   st.set_page_config(
     page_title="Incepta - AI Generation Studio",
     page_icon="🚀",
@@ -135,7 +145,7 @@ def setup_ui():
         .main {padding-top: 2rem;}
         .stTextArea textarea {min-height: 150px;}
         .footer {position: fixed; bottom: 0; width: 100%; text-align: center; padding: 10px;}
-        .enhanced-prompt {background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin-top: 10px;}
+        .enhanced-prompt {background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin-top: 10px; border: 1px solid #ddd;}
         .mode-card {border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-bottom: 15px;}
         .selected-mode {border: 2px solid #4CAF50;}
         .generation-tab {padding: 15px; border-radius: 10px; margin-top: 10px;}
@@ -219,13 +229,17 @@ def setup_ui():
       st.warning("Please enter a prompt first!")
       return
 
-    # Enhance prompt if enabled
+    # Enhance or use original prompt
     if use_enhancer:
       st.session_state.enhanced_prompt = enhance_prompt(user_prompt, selected_mode.split()[1])
-      st.subheader("Enhanced Prompt")
-      st.markdown(f'<div class="enhanced-prompt">{st.session_state.enhanced_prompt}</div>', unsafe_allow_html=True)
     else:
       st.session_state.enhanced_prompt = user_prompt
+      st.markdown(
+        f'<div style="background-color:#f0f8ff; padding:15px; border-radius:5px; margin-top:10px; border:1px solid #ddd">'
+        f'<strong>Using Original Prompt:</strong><br>{user_prompt}'
+        f'</div>',
+        unsafe_allow_html=True
+      )
 
     # Generate outputs
     st.session_state.generated_outputs = {}
@@ -236,69 +250,77 @@ def setup_ui():
 
     if "Image" in output_types:
       with tab1:
-        image = generate_image(prompt_to_use, negative_prompt)
-        st.image(image, caption="Generated Image", use_column_width=True)
-        st.session_state.generated_outputs["image"] = image
+        try:
+          image = generate_image(prompt_to_use, negative_prompt)
+          st.image(image, caption="Generated Image", use_column_width=True)
+          st.session_state.generated_outputs["image"] = image
+        except Exception as e:
+          st.error(f"Failed to generate image: {str(e)}")
 
     if "Video" in output_types:
       with tab2:
-        video_path = generate_video(prompt_to_use, negative_prompt)
-        st.video(video_path)
-        st.session_state.generated_outputs["video"] = video_path
+        try:
+          video_path = generate_video(prompt_to_use, negative_prompt)
+          st.video(video_path)
+          st.session_state.generated_outputs["video"] = video_path
+        except Exception as e:
+          st.error(f"Failed to generate video: {str(e)}")
 
     if "3D Model" in output_types:
       with tab3:
-        gif_path = generate_3D(prompt_to_use)
-        st.image(gif_path, caption="3D Model Preview", use_column_width=True)
-        st.session_state.generated_outputs["3d_model"] = gif_path
+        try:
+          gif_path = generate_3D(prompt_to_use)
+          st.image(gif_path, caption="3D Model Preview", use_column_width=True)
+          st.session_state.generated_outputs["3d_model"] = gif_path
+        except Exception as e:
+          st.error(f"Failed to generate 3D model: {str(e)}")
 
     # Download buttons
-    st.markdown("---")
-    st.subheader("Download Options")
-    cols = st.columns(3)
+    if st.session_state.generated_outputs:
+      st.markdown("---")
+      st.subheader("Download Options")
+      cols = st.columns(3)
 
-    if "image" in st.session_state.generated_outputs:
-      with cols[0]:
-        buf = BytesIO()
-        st.session_state.generated_outputs["image"].save(buf, format="PNG")
-        st.download_button(
-          "Download Image",
-          data=buf.getvalue(),
-          file_name="generated_image.png",
-          mime="image/png"
-        )
-
-    if "video" in st.session_state.generated_outputs:
-      with cols[1]:
-        with open(st.session_state.generated_outputs["video"], "rb") as f:
+      if "image" in st.session_state.generated_outputs:
+        with cols[0]:
+          buf = BytesIO()
+          st.session_state.generated_outputs["image"].save(buf, format="PNG")
           st.download_button(
-            "Download Video",
-            data=f,
-            file_name="generated_video.mp4",
-            mime="video/mp4"
+            "Download Image",
+            data=buf.getvalue(),
+            file_name="generated_image.png",
+            mime="image/png"
           )
 
-    if "3d_model" in st.session_state.generated_outputs:
-      with cols[2]:
-        with open(st.session_state.generated_outputs["3d_model"], "rb") as f:
-          st.download_button(
-            "Download 3D Preview",
-            data=f,
-            file_name="3d_preview.gif",
-            mime="image/gif"
-          )
+      if "video" in st.session_state.generated_outputs:
+        with cols[1]:
+          with open(st.session_state.generated_outputs["video"], "rb") as f:
+            st.download_button(
+              "Download Video",
+              data=f,
+              file_name="generated_video.mp4",
+              mime="video/mp4"
+            )
+
+      if "3d_model" in st.session_state.generated_outputs:
+        with cols[2]:
+          with open(st.session_state.generated_outputs["3d_model"], "rb") as f:
+            st.download_button(
+              "Download 3D Preview",
+              data=f,
+              file_name="3d_preview.gif",
+              mime="image/gif"
+            )
 
   # Footer
   st.markdown("---")
   footer = """
     <div class="footer">
-        <p>Incepta Generation Studio v1.0 | <a href="https://github.com/yourusername" target="_blank">GitHub</a> | Made with ❤️ using Diffusers</p>
+        <p>Incepta [From Imagination to Reality — One Prompt at a Time] v1.0 | <a href="https://github.com/AkibDa" target="_blank">GitHub</a> | Made with ❤️ using Diffusers</p>
     </div>
     """
   html(footer, height=50)
 
 
 if __name__ == "__main__":
-  from io import BytesIO
-
-  setup_ui()
+  main()
