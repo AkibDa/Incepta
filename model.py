@@ -30,7 +30,7 @@ def clear_memory():
 
 # === Prompt Enhancer (Text-to-Text) ===
 def enhance_prompt(prompt):
-  HF_TOKEN = st.secrets["api"]["HF_TOKEN"]
+  HF_TOKEN = os.environ.get("HF_TOKEN")
 
   API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
   headers = {

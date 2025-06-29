@@ -76,7 +76,7 @@ def load_prompt_enhancer():
 def enhance_prompt(prompt, mode="Standard", creativity=0.7):
   with st.spinner("🧠 Enhancing your prompt..."):
     # Safely load secret inside function
-    HF_TOKEN = st.secrets.get("HF_TOKEN", "")
+    HF_TOKEN = os.environ.get("HF_TOKEN")
     if not HF_TOKEN:
       st.error("❌ Hugging Face token not found. Please set `HF_TOKEN` in Space secrets.")
       return prompt
