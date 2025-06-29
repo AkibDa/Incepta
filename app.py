@@ -16,7 +16,7 @@ from datetime import datetime
 
 # === Constants and Config ===
 MODEL_INFO = {
-  "text_enhancer": "google/flan-t5-large",
+  "text_enhancer": "google/flan-t5-base",
   "image_generator": "CompVis/stable-diffusion-v1-4",
   "video_generator": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
   "3d_generator": "openai/shap-e"
