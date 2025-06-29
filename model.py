@@ -33,7 +33,7 @@ def enhance_prompt(prompt):
   print("\n⏳ Enhancing prompt...")
   prompt_enhancer = pipeline(
     "text2text-generation",
-    model="google/flan-t5-large",
+    model="google/flan-t5-base",
     device=0 if torch.cuda.is_available() else -1  # CPU
   )
   instruction = "Make this prompt more vivid, detailed, and suitable for high-quality visual output."
