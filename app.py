@@ -66,12 +66,14 @@ def add_to_history(prompt, enhanced_prompt, outputs, output_files):
 # === Enhanced Generation Functions ===
 @st.cache_resource(show_spinner=False)
 def load_prompt_enhancer():
+    # Set cache dir to something writable on Hugging Face Spaces
+    os.environ["TRANSFORMERS_CACHE"] = "/tmp/huggingface"
+
     return pipeline(
         "text2text-generation",
         model="google/flan-t5-base",
         device=get_device_info()["cuda"]
     )
-
 def enhance_prompt(prompt, mode="Standard", creativity=0.7):
     enhancer = load_prompt_enhancer()
 
