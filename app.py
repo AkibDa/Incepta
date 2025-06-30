@@ -18,7 +18,7 @@ from datetime import datetime
 # === Constants and Config ===
 MODEL_INFO = {
   "text_enhancer": "google/flan-t5-base",
-  "image_generator": "stabilityai/stable-diffusion-2-1",
+  "image_generator": "runwayml/stable-diffusion-v1-5",
   "video_generator": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
   "3d_generator": "openai/shap-e"
 }
@@ -66,66 +66,38 @@ def add_to_history(prompt, enhanced_prompt, outputs, output_files):
 # === Enhanced Generation Functions ===
 @st.cache_resource(show_spinner=False)
 def load_prompt_enhancer():
-  """Cache the enhancer model for performance"""
-  return pipeline(
-    "text2text-generation",
-    model=MODEL_INFO["text_enhancer"],
-    device=get_device_info()["cuda"]
-  )
+    return pipeline(
+        "text2text-generation",
+        model="google/flan-t5-base",
+        device=get_device_info()["cuda"]
+    )
 
 def enhance_prompt(prompt, mode="Standard", creativity=0.7):
-  with st.spinner("🧠 Enhancing your prompt..."):
-    # Safely load secret inside function
-    HF_TOKEN = os.environ.get("HF_TOKEN")
-    if not HF_TOKEN:
-      st.error("❌ Hugging Face token not found. Please set `HF_TOKEN` in Space secrets.")
-      return prompt
+    enhancer = load_prompt_enhancer()
 
-    API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
-    HEADERS = {
-      "Authorization": f"Bearer {HF_TOKEN}"
-    }
-
-    # Prompt instructions
     instructions = {
-      "Standard": "Improve this prompt for general creative generation:",
-      "Photorealistic": "Make this photorealistic with detailed descriptions:",
-      "Artistic": "Enhance for artistic style with creative elements:",
-      "Cinematic": "Optimize for cinematic visuals with dramatic elements:",
-      "Detailed": "Add rich, specific details to this prompt:",
-      "3D Render": "Prepare for 3D modeling with technical details:"
+        "Standard": "Improve this prompt for general creative generation:",
+        "Photorealistic": "Make this photorealistic with detailed descriptions:",
+        "Artistic": "Enhance for artistic style with creative elements:",
+        "Cinematic": "Optimize for cinematic visuals with dramatic elements:",
+        "Detailed": "Add rich, specific details to this prompt:",
+        "3D Render": "Prepare for 3D modeling with technical details:"
     }
 
     instruction = instructions.get(mode, "Improve:")
     input_text = f"{instruction} {prompt}"
-
     max_len = min(50 + int(creativity * 100), 150)
 
-    payload = {
-      "inputs": input_text,
-      "parameters": {
-        "max_length": max_len
-      }
-    }
-
-    response = requests.post(API_URL, headers=HEADERS, json=payload)
-
-    if response.status_code == 200:
-      try:
-        enhanced = response.json()[0]["generated_text"]
-      except Exception:
-        st.error("⚠️ Error parsing response.")
-        return prompt
-    else:
-      st.error(f"❌ API error: {response.status_code}")
-      return prompt
+    result = enhancer(input_text, max_length=max_len, do_sample=True)
+    enhanced = result[0]["generated_text"]
 
     with st.expander("🔍 Prompt Enhancement Details", expanded=False):
-      st.markdown(f"**Original:** `{prompt}`")
-      st.markdown(f"**Enhanced:** `{enhanced}`")
-      st.caption(f"Mode: {mode} | Creativity: {creativity:.1f}")
+        st.markdown(f"**Original:** `{prompt}`")
+        st.markdown(f"**Enhanced:** `{enhanced}`")
+        st.caption(f"Mode: {mode} | Creativity: {creativity:.1f}")
 
     return enhanced
+
 
 
 @st.cache_resource(show_spinner=False)
@@ -133,19 +105,19 @@ def load_image_pipeline():
     """Cache the image generation pipeline"""
     device = get_device_info()["mps"]
 
-    HF_TOKEN = st.secrets["HF_TOKEN"]  # 🔐 securely load your token
+    HF_TOKEN = os.environ.get("HF_TOKEN")  # 🔐 securely load your token
 
     scheduler = EulerDiscreteScheduler.from_pretrained(
-        MODEL_INFO["image_generator"],
-        subfolder="scheduler",
-        use_auth_token=HF_TOKEN  # ✅ required for private/gated models
+      MODEL_INFO["image_generator"],
+      subfolder="scheduler",
+      token=HF_TOKEN  # ✅
     )
 
     pipe = StableDiffusionPipeline.from_pretrained(
-        MODEL_INFO["image_generator"],
-        scheduler=scheduler,
-        torch_dtype=torch.float16 if device == "mps" else torch.float32,
-        use_auth_token=HF_TOKEN  # ✅ add this
+      MODEL_INFO["image_generator"],
+      scheduler=scheduler,
+      torch_dtype=torch.float16 if device == "mps" else torch.float32,
+      token=HF_TOKEN  # ✅
     ).to(device)
 
     return pipe
@@ -179,7 +151,7 @@ def generate_image(prompt, negative_prompt="", steps=20, guidance=7.5, seed=None
 @st.cache_resource(show_spinner=False)
 def load_video_pipeline():
     """Cache the video generation pipeline"""
-    HF_TOKEN = st.secrets["HF_TOKEN"]  # or os.environ.get("HF_TOKEN")
+    HF_TOKEN = os.environ.get("HF_TOKEN")  # or os.environ.get("HF_TOKEN")
     return DiffusionPipeline.from_pretrained(
         MODEL_INFO["video_generator"],
         torch_dtype=torch.float32,
@@ -218,7 +190,7 @@ def generate_video(prompt, negative_prompt="", height=352, width=640, num_frames
 def load_3d_pipeline():
     """Cache the 3D generation pipeline"""
     device = get_device_info()["mps"]
-    HF_TOKEN = st.secrets["HF_TOKEN"]  # or os.environ.get("HF_TOKEN")
+    HF_TOKEN = os.environ.get("HF_TOKEN")  # or os.environ.get("HF_TOKEN")
     return ShapEPipeline.from_pretrained(
         MODEL_INFO["3d_generator"],
         use_auth_token=HF_TOKEN  # ✅ Add this line
