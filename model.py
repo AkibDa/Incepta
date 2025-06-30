@@ -62,7 +62,7 @@ def enhance_prompt(prompt):
 def generate_image(prompt):
   print("\n🖼 Generating image...")
   clear_memory()
-  model_id = "runwayml/stable-diffusion-v1-5"
+  model_id = "stabilityai/stable-diffusion-2-1"
   scheduler = EulerDiscreteScheduler.from_pretrained(model_id, subfolder="scheduler")
 
   pipe = StableDiffusionPipeline.from_pretrained(
